@@ -5,12 +5,15 @@ using System.Text;
 using System.Threading.Tasks;
 using AspNetCoreRateLimit;
 using Core.Interfaces;
+using Core.models;
 using Infrastructure.UnitOfWork;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.IdentityModel.Tokens;
 using WebApi.Helpers;
+using WebApi.Services;
 
 namespace WebApi.Extensions
 {
@@ -27,6 +30,8 @@ namespace WebApi.Extensions
         public static void AddAplicationServices(this IServiceCollection services)
         {
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+            services.AddScoped<IUserService, UserService>();
+            services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
         }
         public static void ConfigureRateLimiting(this IServiceCollection services)
         {

@@ -7,6 +7,9 @@ namespace Core.Interfaces
 {
     public interface IUnitOfWork
     {
+        IUsuario Usuarios { get; }
+        IRol Roles { get; }
+        IUsuarioRol UsuariosRoles { get; }
         Task<int> SaveAsync();
         
     }

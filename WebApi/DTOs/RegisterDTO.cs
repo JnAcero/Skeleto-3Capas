@@ -9,11 +9,11 @@ namespace WebApi.DTOs
     public class RegisterDTO
     {
         [Required]
+        public string UserName { get; set; }
         public string Email { get; set; }
-        [Required]
-        public string Username { get; set; }
-        [Required]
         public string Password { get; set; }
+        public int TrainerId { get; set; }
+        public int RolId { get; set; }
 
     }
 }

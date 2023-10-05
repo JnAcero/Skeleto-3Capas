@@ -1,11 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Security.Claims;
+using System.Text;
 using System.Threading.Tasks;
 using Core.Interfaces;
 using Core.models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using WebApi.DTOs;
 using WebApi.Helpers;
 
@@ -26,14 +30,161 @@ namespace WebApi.Services
             _passwordHasher = passwordHasher;
         }
 
-        public Task<DatosUsuarioDTO> GetTokenAsync(LoginDTO model)
+        public async Task<RespuestaDTO> LoginAsync(LoginDTO loginDTO)
         {
-            throw new NotImplementedException();
+            var usuario = await _unitOfWork.Usuarios.FindUserByUserName(loginDTO.UserName);
+            bool UsuarioIsVerified = VerifyPassword(usuario, loginDTO.Password);
+            if (UsuarioIsVerified && (usuario is not null))
+            {
+                JwtSecurityToken jwtSecurityToken = CreateJwtToken(usuario);
+                return new RespuestaDTO
+                {
+                    success = true,
+                    message = "Ok,Verificado",
+                    result = new
+                    {
+                        Id = usuario.Id,
+                        nombreUsuario = usuario.NombreUsuario,
+                        email = usuario.Email,
+                        rol = string.Join(',', GetRolesUsuario(usuario)),
+                        token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken)
+                    }
+
+                };
+            }
+            else
+            {
+                return new RespuestaDTO
+                {
+                    success = false,
+                    message = "Credenciales incorrectas para el usuario",
+                    result = ""
+                };
+            }
+        }
+        private bool VerifyPassword(Usuario usuario, string passwordToCompare)
+        {
+            var passwordVerificationResult = PasswordVerificationResult.Failed;
+            try
+            {
+                passwordVerificationResult = _passwordHasher.VerifyHashedPassword(usuario, usuario.Password, passwordToCompare);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            return passwordVerificationResult == PasswordVerificationResult.Success;
         }
 
-        public Task<string> RegisterAsync(RegisterDTO model)
+        public async Task<RespuestaDTO> RegisterAsync(RegisterDTO registerDTO)
         {
-            throw new NotImplementedException();
+            var usuarioAVerificar = await _unitOfWork.Usuarios.FindUserByUserName(registerDTO.UserName);
+            if (usuarioAVerificar is null)
+            {
+                var usuario = new Usuario()
+                {
+                    NombreUsuario = registerDTO.UserName,
+                    Email = registerDTO.Email,
+                    FechaCreacion = DateTime.Now,
+                };
+
+                usuario.Password = _passwordHasher.HashPassword(usuario, registerDTO.Password);
+
+                var rolUsuario = await _unitOfWork.Roles.GetByIdAsync(registerDTO.RolId);
+
+                if (rolUsuario is null)
+                {
+                    return new RespuestaDTO
+                    {
+                        success = false,
+                        message = $"El rol con id:{registerDTO.RolId} no existe ",
+                        result = ""
+                    };
+                }
+                var datos_Usuario_Rol = new List<UsuarioRol>(){
+                        new()
+                        {
+                            Usuario = usuario,
+                            Rol = rolUsuario
+                        }
+                    };
+                // usuario.UsuariosRoles.AddRange(datos_Usuario_Rol);
+                usuario.UsuariosRoles.AddRange(datos_Usuario_Rol);
+                _unitOfWork.Usuarios.Add(usuario);
+                await _unitOfWork.SaveAsync();
+                return new RespuestaDTO
+                {
+                    success = true,
+                    message = "Usuario creado exitosamente",
+                    result = new
+                    {
+                        Id = usuario.Id,
+                        nameUser = usuario.NombreUsuario,
+                        email = usuario.Email
+                    }
+                };
+            }
+            else
+            {
+                return new RespuestaDTO
+                {
+                    success = false,
+                    message = "Usuario ya existe",
+                    result = ""
+                };
+            }
         }
+        private JwtSecurityToken CreateJwtToken(Usuario usuario)
+        {
+            var claims = new List<Claim>()
+                {
+                    new Claim(JwtRegisteredClaimNames.Sub , usuario.NombreUsuario),
+                    new Claim(JwtRegisteredClaimNames.Jti , Guid.NewGuid().ToString()),
+                    new Claim("id", usuario.Id.ToString()),
+                    new Claim("username", usuario.NombreUsuario),
+                    new Claim("email", usuario.Email)
+                };
+            var usuariosRoles = usuario.UsuariosRoles;
+            var roleClaims = new List<Claim>();
+            foreach (var usuarioRol in usuariosRoles)
+            {
+                roleClaims.Add(new Claim("role", usuarioRol.Rol.Nombre));
+            }
+            claims.AddRange(roleClaims);
+
+            var SecurityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.Key));
+            var signInCredentials = new SigningCredentials(SecurityKey, SecurityAlgorithms.HmacSha256Signature);
+
+            var JwtSecurityToken = new JwtSecurityToken(
+                issuer: _jwt.Issuer,
+                audience: _jwt.Audience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(_jwt.DurationInMinutes),
+                signingCredentials: signInCredentials
+            );
+            return JwtSecurityToken;
+        }
+        public async void UpdateAndSaveUserAsync(Usuario usuario)
+        {
+            _unitOfWork.Usuarios.Update(usuario);
+            await _unitOfWork.SaveAsync();
+
+        }
+        public string HashPaswordOfUser(Usuario usuario)
+        {
+            return usuario.Password = _passwordHasher.HashPassword(usuario, usuario.Password);
+        }
+        private List<string> GetRolesUsuario(Usuario usuario)
+        {
+            var rolesUsuario = new List<string>();
+            foreach (var user in usuario.UsuariosRoles)
+            {
+                rolesUsuario.Add(user.Rol.Nombre);
+            }
+            return rolesUsuario;
+        }
+
+
+
     }
 }

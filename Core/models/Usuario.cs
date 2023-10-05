@@ -12,8 +12,6 @@ namespace Core.models
         public string Email { get; set; } = null!;
         public string Password { get; set; }= null!;
         public DateTime FechaCreacion { get; set; }
-        public int TrainerId { get; set; }
-        [ForeignKey("TrainerId")]
          public List<UsuarioRol> UsuariosRoles { get; set; } = new List<UsuarioRol>();
     }
 }
