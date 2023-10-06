@@ -10,5 +10,6 @@ namespace Core.Interfaces
     {
         Task<Usuario> FindUserByUserName(string userName);
         Task<Usuario> FindByUserNameAndPassword(string username, string password);
+        Task<Usuario> GetByRefreshToken(string refreshToken);
     }
 }

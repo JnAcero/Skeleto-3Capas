@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Core.Interfaces;
 using Core.models;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Repositories
 {
@@ -13,14 +14,29 @@ namespace Infrastructure.Repositories
         {
         }
 
-        public Task<Usuario> FindByUserNameAndPassword(string username, string password)
+        public async Task<Usuario> FindByUserNameAndPassword(string username, string password)
         {
-            throw new NotImplementedException();
+             var user = await _context.Usuarios
+            .Where(u =>u.NombreUsuario.ToLower() == username.ToLower() && u.Password == password)
+            .Include(u =>u.UsuariosRoles)
+            .FirstOrDefaultAsync();
+            return user;
         }
 
-        public Task<Usuario> FindUserByUserName(string userName)
+        public async Task<Usuario> FindUserByUserName(string userName)
         {
-            throw new NotImplementedException();
+            var user = await _context.Usuarios
+           .Where( u => u.NombreUsuario.ToLower() == userName.ToLower() )
+           .Include(u =>u.UsuariosRoles)
+                .ThenInclude(ur =>ur.Rol)
+           .FirstOrDefaultAsync()
+           ;
+           return user;
+        }
+
+        public async Task<Usuario> GetByRefreshToken(string refreshToken)
+        {
+            return await _context.Usuarios.FirstOrDefaultAsync(x =>x.RefreshToken == refreshToken);
         }
     }
 }

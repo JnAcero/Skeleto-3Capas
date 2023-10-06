@@ -2,11 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Net;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Core.Interfaces;
 using Core.models;
+using Core.Models;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -15,12 +19,12 @@ using WebApi.Helpers;
 
 namespace WebApi.Services
 {
-    public class UserService:IUserService
+    public class UserService : IUserService
     {
-         private readonly JWT _jwt;
+        private readonly JWT _jwt;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IPasswordHasher<Usuario> _passwordHasher;
-       
+
 
         public UserService(IUnitOfWork unitOfWork, IOptions<JWT> jwt,
             IPasswordHasher<Usuario> passwordHasher)
@@ -37,6 +41,10 @@ namespace WebApi.Services
             if (UsuarioIsVerified && (usuario is not null))
             {
                 JwtSecurityToken jwtSecurityToken = CreateJwtToken(usuario);
+                var Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
+
+                //var refreshToken = GenerateRefreshToken();
+                //SetRefreshToken(refreshToken);
                 return new RespuestaDTO
                 {
                     success = true,
@@ -47,7 +55,7 @@ namespace WebApi.Services
                         nombreUsuario = usuario.NombreUsuario,
                         email = usuario.Email,
                         rol = string.Join(',', GetRolesUsuario(usuario)),
-                        token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken)
+                        token = Token
                     }
 
                 };
@@ -62,6 +70,17 @@ namespace WebApi.Services
                 };
             }
         }
+        public RefreshToken GenerateRefreshToken()
+        {
+            var refreshToken = new RefreshToken()
+            {
+                Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(Convert.ToInt32(DateTime.UtcNow))),
+                Expires = DateTime.Now.AddDays(7)
+
+            };
+            return refreshToken;
+        }
+
         private bool VerifyPassword(Usuario usuario, string passwordToCompare)
         {
             var passwordVerificationResult = PasswordVerificationResult.Failed;
@@ -163,6 +182,38 @@ namespace WebApi.Services
                 signingCredentials: signInCredentials
             );
             return JwtSecurityToken;
+        }
+
+        public async Task<RespuestaDTO> RefreshToken(string refreshToken)
+        {
+            var usuario = await _unitOfWork.Usuarios.GetByRefreshToken(refreshToken);
+            if (usuario is null)
+            {
+                return new RespuestaDTO
+                {
+                    success = false,
+                    message = "Token is not assigned to any user",
+                    result = ""
+                };
+            }
+            else if (usuario.TokenExpires < DateTime.Now)
+            {
+                return new RespuestaDTO
+                {
+                    success = false,
+                    message = "Token expired",
+                    result = ""
+                };
+            }
+            JwtSecurityToken jwtSecurityToken = CreateJwtToken(usuario);
+            string Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
+            return new RespuestaDTO
+            {
+                success = true,
+                message = "Ok",
+                result = Token
+
+            };
         }
         public async void UpdateAndSaveUserAsync(Usuario usuario)
         {

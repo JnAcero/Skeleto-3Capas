@@ -4,11 +4,12 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 using Core.Interfaces;
+using Core.models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Repositories
 {
-    public class GenericRepository<T> :IGenericRepository<T> where T: class
+    public class GenericRepository<T> :IGenericRepository<T> where T: BaseEntity
     {
           protected AplicationDbContext _context;
         public GenericRepository(AplicationDbContext context)
@@ -46,9 +47,9 @@ namespace Infrastructure.Repositories
            return (totalRegistros, registros);
         }
 
-        public  virtual Task<T> GetByIdAsync(int id)
+        public async virtual Task<T> GetByIdAsync(int id)
         {
-            throw new NotImplementedException();
+           return await _context.Set<T>().FirstOrDefaultAsync(x => x.Id == id);
         }
 
         public void Remove(T entity)

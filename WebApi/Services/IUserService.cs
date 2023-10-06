@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Core.models;
+using Core.Models;
 using WebApi.DTOs;
 
 namespace WebApi.Services
@@ -13,6 +14,8 @@ namespace WebApi.Services
         Task<RespuestaDTO> LoginAsync(LoginDTO loginDTO);
         void UpdateAndSaveUserAsync(Usuario usuario);
         string HashPaswordOfUser(Usuario usuario);
+        RefreshToken GenerateRefreshToken();
+        Task<RespuestaDTO> RefreshToken(string refreshToken);
 
     }
 }
