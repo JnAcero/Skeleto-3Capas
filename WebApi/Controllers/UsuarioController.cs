@@ -50,17 +50,15 @@ namespace WebApi.Controllers
                 var usuario = await _unitOfWork.Usuarios.FindUserByUserName(loginDto.UserName);
                 var refreshToken = _userService.GenerateRefreshToken();
 
-                usuario.RefreshToken = refreshToken.Token;
-                usuario.TokenCreated = refreshToken.Created;
-                usuario.TokenExpires = refreshToken.Expires;
-                SetRefreshToken(refreshToken);
-
+                SetRefreshToken(refreshToken, usuario);
+                
                 _unitOfWork.Usuarios.Update(usuario);
                 await _unitOfWork.SaveAsync();
+
                 return Ok(respuesta);
             }
         }
-        private void SetRefreshToken(RefreshToken newRefeshToken)
+        private async void SetRefreshToken(RefreshToken newRefeshToken, Usuario usuario)
         {
             var cookieOptions = new CookieOptions
             {
@@ -68,21 +66,26 @@ namespace WebApi.Controllers
                 Expires = newRefeshToken.Expires
             };
             Response.Cookies.Append("refreshToken", newRefeshToken.Token, cookieOptions);
+            usuario.RefreshToken = newRefeshToken.Token;
+            usuario.TokenCreated = newRefeshToken.Created;
+            usuario.TokenExpires = newRefeshToken.Expires;
+
         }
         [HttpPost("refresh-token")]
         public async Task<ActionResult> RefreshToken()
         {
             var refreshToken = Request.Cookies["refreshToken"];
             var response = await _userService.RefreshToken(refreshToken);
-            if(!response.success)
+            if (!response.success)
             {
                 return Unauthorized(response.message);
             }
+            var usuario = await _unitOfWork.Usuarios.GetByRefreshToken(refreshToken);
             var token = response.result;
 
             RefreshToken newRefreshToken = _userService.GenerateRefreshToken();
-            SetRefreshToken(newRefreshToken);
-            
+            SetRefreshToken(newRefreshToken, usuario);
+
             return Ok(token);
         }
         [HttpGet]

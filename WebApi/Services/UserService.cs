@@ -74,7 +74,7 @@ namespace WebApi.Services
         {
             var refreshToken = new RefreshToken()
             {
-                Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(Convert.ToInt32(DateTime.UtcNow))),
+                Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(654)),
                 Expires = DateTime.Now.AddDays(7)
 
             };

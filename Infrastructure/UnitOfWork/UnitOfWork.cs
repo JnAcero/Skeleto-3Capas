@@ -7,7 +7,7 @@ using Infrastructure.Repositories;
 
 namespace Infrastructure.UnitOfWork
 {
-    public class UnitOfWork : IUnitOfWork, IDisposable
+    public class UnitOfWork : IUnitOfWork
     {
         private UsuarioRepository _usuarios;
         private RolRepository _roles;
@@ -38,10 +38,6 @@ namespace Infrastructure.UnitOfWork
 
         public IUsuarioRol UsuariosRoles => throw new NotImplementedException();
 
-        public void Dispose()
-        {
-            _context.Dispose();
-        }
 
         public Task<int> SaveAsync()
         {
